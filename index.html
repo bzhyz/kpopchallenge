@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KPOP 认人挑战 - 语音版</title>
+  <script src="https://unpkg.com/pinyin-pro"></script>
+  <link href="https://gs.jurieo.com/gemini/fonts-googleapis/css2?family=Black+Han+Sans&family=Noto+Sans+SC:wght@300;400;700&display=swap" rel="stylesheet">
+  <style>
+    /* ... 这里保留你之前所有的 CSS 样式 (root, card, timer, mic-vis 等) ... */
+    /* 由于篇幅限制，此处略去你已有的 CSS，请务必把之前的样式贴在这里 */
+    :root { --pink: #ff2d87; --purple: #9b30ff; --dark: #0a0a0f; --card: #12121c; --card2: #1a1a2e; --text: #f0e6ff; --muted: #8080a0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--dark); font-family: 'Noto Sans SC', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .game-wrap { width: 100%; max-width: 430px; padding: 16px; position: relative; z-index: 1; }
+    .header { text-align: center; margin-bottom: 18px; }
+    .header-sub { font-size: 28px; font-weight: 700; color: var(--text); }
+    .score-bar { display: flex; justify-content: space-between; align-items: center; background: var(--card); border: 1px solid rgba(255,45,135,0.2); border-radius: 50px; padding: 8px 20px; margin-bottom: 16px; font-size: 13px; color: var(--muted); }
+    .score-val { color: var(--pink); font-size: 18px; font-weight: 700; }
+    .card { background: var(--card); border: 1px solid rgba(255,255,255,0.07); border-radius: 24px; overflow: hidden; }
+    .photo-wrap { position: relative; width: 100%; height: 340px; overflow: hidden; background: var(--card2); }
+    #idol-img { width: 100%; height: 100%; object-fit: cover; object-position: top center; transition: filter 0.6s ease, transform 0.6s ease; }
+    #idol-img.blurred { filter: blur(18px) brightness(0.7); transform: scale(1.05); }
+    .phase-badge { position: absolute; top: 14px; right: 14px; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); border: 1px solid rgba(255,45,135,0.5); color: var(--pink); font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 20px; text-transform: uppercase; }
+    .dots { display: flex; gap: 6px; justify-content: center; padding: 16px 24px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.1); }
+    .dot.done-correct { background: #4ade80; }
+    .dot.done-wrong { background: #f87171; }
+    .dot.current { background: var(--pink); transform: scale(1.4); }
+    .timer-area { padding: 4px 24px 0; display: flex; align-items: center; gap: 16px; }
+    .timer-number { font-family: 'Black Han Sans', sans-serif; font-size: 22px; color: var(--text); }
+    .timer-status { font-size: 15px; color: var(--text); min-height: 44px; }
+    .timer-status.recording { color: var(--pink); }
+    .mic-vis { display: flex; align-items: center; justify-content: center; gap: 4px; height: 36px; opacity: 0; }
+    .mic-vis.active { opacity: 1; }
+    .bar { width: 4px; background: var(--pink); border-radius: 2px; animation: wave 0.8s infinite; min-height: 4px; height: 10px; }
+    @keyframes wave { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
+    .btn-start { width: 100%; background: linear-gradient(135deg, var(--pink), var(--purple)); color: white; border: none; padding: 16px; border-radius: 14px; font-size: 17px; font-weight: 700; cursor: pointer; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div class="game-wrap">
+  <div class="header">
+    <div class="header-sub">KPOP 认人挑战</div>
+  </div>
+
+  <div class="score-bar">
+    <span>第 <b id="round-num">0</b> / 10 轮</span>
+    <span class="score-val">✦ <span id="score-val">0</span> 分</span>
+  </div>
+
+  <div class="card">
+    <div id="start-screen">
+      <div style="padding:40px 24px; text-align:center;">
+        <p style="color:var(--muted); margin-bottom:20px;">纯前端 0 成本版<br>使用浏览器原生语音识别</p>
+        <button class="btn-start" onclick="initGame()">开始挑战 →</button>
+      </div>
+    </div>
+
+    <div id="game-screen" class="hidden">
+      <div class="photo-wrap">
+        <img id="idol-img" src="" class="blurred">
+        <div class="phase-badge" id="phase-badge">READY</div>
+      </div>
+      <div class="dots" id="dots-bar"></div>
+      <div class="timer-area">
+        <div class="timer-number" id="timer-num">5</div>
+        <div class="timer-info">
+          <div id="status-text" class="timer-status">认出TA是谁了吗？</div>
+        </div>
+      </div>
+      <div class="mic-vis" id="mic-vis">
+        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      </div>
+    </div>
+
+    <div id="result-screen" class="hidden" style="padding:40px 24px; text-align:center;">
+      <h1 id="final-score" style="font-size:60px; color:var(--pink);">0</h1>
+      <p style="color:var(--text); margin-bottom:20px;">分</p>
+      <button class="btn-start" onclick="location.reload()">再玩一次</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const { pinyin } = pinyinPro;
+
+const database = [
+  { name: "田柾国", aliases: ["jungkook", "果果"], pinyin: ["tianjiuguo", "tianzhengguo"], img: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Jungkook_at_the_Global_Citizen_Festival_2023.jpg/400px-Jungkook_at_the_Global_Citizen_Festival_2023.jpg" },
+  { name: "张元英", aliases: ["wonyoung", "元英"], pinyin: ["zhangyuanying"], img: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/IVE_Jang_Won-young_in_2023.jpg/400px-IVE_Jang_Won-young_in_2023.jpg" }
+];
+
+let currentRound = 0, score = 0, currentIdol = null, roundResults = [];
+let timerInterval = null;
+
+// ═══════════════════════════════════════════════
+// 语音识别初始化
+// ═══════════════════════════════════════════════
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+
+if (SpeechRecognition) {
+  recognition = new SpeechRecognition();
+  recognition.lang = 'zh-CN';
+  recognition.interimResults = false;
+
+  recognition.onresult = (event) => {
+    const text = event.results[0][0].transcript;
+    // 使用 pinyin-pro 转拼音
+    const pyText = pinyin(text, { toneType: 'none', type: 'array' }).join('');
+    judgeResult(text, pyText);
+  };
+
+  recognition.onerror = (e) => {
+    console.error("识别错误:", e.error);
+    if(e.error === 'no-speech') judgeResult('', '');
+  };
+} else {
+  alert("抱歉，您的浏览器不支持原生语音识别，建议使用 Chrome 访问。");
+}
+
+function initGame() {
+  document.getElementById('start-screen').classList.add('hidden');
+  document.getElementById('game-screen').classList.remove('hidden');
+  nextRound();
+}
+
+function nextRound() {
+  if (currentRound >= 10) { endGame(); return; }
+  currentRound++;
+  document.getElementById('round-num').textContent = currentRound;
+  
+  currentIdol = database[Math.floor(Math.random() * database.length)];
+  const img = document.getElementById('idol-img');
+  img.src = currentIdol.img;
+  img.classList.add('blurred');
+
+  document.getElementById('phase-badge').textContent = "LOOK";
+  document.getElementById('status-text').textContent = "认出TA是谁了吗？";
+  
+  setTimeout(() => {
+    img.classList.remove('blurred');
+    startCountdown(5, startRecording);
+  }, 500);
+}
+
+function startCountdown(sec, callback) {
+  let rem = sec;
+  document.getElementById('timer-num').textContent = rem;
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    rem--;
+    document.getElementById('timer-num').textContent = rem;
+    if(rem <= 0) { clearInterval(timerInterval); callback(); }
+  }, 1000);
+}
+
+function startRecording() {
+  document.getElementById('phase-badge').textContent = "REC ●";
+  document.getElementById('status-text').textContent = "🎤 请说出名字...";
+  document.getElementById('mic-vis').classList.add('active');
+
+  try { recognition.start(); } catch(e){}
+
+  startCountdown(5, () => {
+    document.getElementById('mic-vis').classList.remove('active');
+    recognition.stop();
+  });
+}
+
+function judgeResult(text, py) {
+  const isMatch = currentIdol.aliases.some(a => text.toLowerCase().includes(a.toLowerCase())) ||
+                  currentIdol.pinyin.some(p => py.includes(p));
+
+  if (isMatch) {
+    score++;
+    document.getElementById('score-val').textContent = score;
+    document.getElementById('status-text').textContent = "✅ 正确！识别到: " + text;
+  } else {
+    document.getElementById('status-text').textContent = "❌ 错误！识别到: " + (text || "无");
+  }
+
+  roundResults.push(isMatch);
+  setTimeout(nextRound, 2000);
+}
+
+function endGame() {
+  document.getElementById('game-screen').classList.add('hidden');
+  document.getElementById('result-screen').classList.remove('hidden');
+  document.getElementById('final-score').textContent = score;
+}
+</script>
+</body>
+</html>
